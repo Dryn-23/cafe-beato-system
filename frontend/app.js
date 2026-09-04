@@ -1,4 +1,4 @@
-const API_URL = "https://cafe-beato-system.onrender.com"; // Replace with your backend API URL
+const API_URL = "https://cafe-beato-system-2.onrender.com"; // Replace with your backend API URL
 
 const loginForm = document.getElementById("loginForm");
 const registerForm = document.getElementById("registerForm");
