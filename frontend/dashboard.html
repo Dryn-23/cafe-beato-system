@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Dashboard</h1>
+    <p id="welcome">Loading...</p>
+    <button id="logout">Logout</button>
+  </main>
+
+  <script>
+    const API_URL = "http://localhost:5000";
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      window.location.href = "index.html";
+    }
+
+    fetch(`${API_URL}/api/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error();
+      return response.json();
+    })
+    .then(data => {
+      document.getElementById("welcome").textContent =
+        `Welcome, ${data.user.name} (${data.user.email})`;
+    })
+    .catch(() => {
+      localStorage.removeItem("token");
+      window.location.href = "index.html";
+    });
+
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

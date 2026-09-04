@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Welcome Back</h1>
+    <p class="subtitle">Sign in to your account</p>
+
+    <form id="loginForm">
+      <label>Email</label>
+      <input type="email" id="email" required>
+
+      <label>Password</label>
+      <input type="password" id="password" required>
+
+      <button type="submit">Login</button>
+      <p id="message"></p>
+    </form>
+
+    <p>Don't have an account? <a href="#" id="showRegister">Register</a></p>
+
+    <form id="registerForm" class="hidden">
+      <h2>Create Account</h2>
+      <label>Name</label>
+      <input type="text" id="name">
+
+      <label>Email</label>
+      <input type="email" id="regEmail">
+
+      <label>Password</label>
+      <input type="password" id="regPassword">
+
+      <button type="submit">Register</button>
+      <p id="registerMessage"></p>
+    </form>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
