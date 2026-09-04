@@ -16,6 +16,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
+/* ---------------------------------------------
+   MODELS
+--------------------------------------------- */
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
@@ -24,9 +28,56 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+const orderSchema = new mongoose.Schema({
+  customerName: { type: String, required: true, trim: true },
+  item: { type: String, required: true, trim: true },
+  size: { type: String, enum: ["Small", "Medium", "Large"], default: "Medium" },
+  quantity: { type: Number, required: true, min: 1, default: 1 },
+  notes: { type: String, trim: true, default: "" },
+  price: { type: Number, required: true, min: 0 },
+  status: {
+    type: String,
+    enum: ["pending", "preparing", "ready", "completed"],
+    default: "pending"
+  },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Order = mongoose.model("Order", orderSchema);
+
+/* ---------------------------------------------
+   AUTH MIDDLEWARE
+--------------------------------------------- */
+
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized." });
+  }
+
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
+}
+
+/* ---------------------------------------------
+   HEALTH CHECK
+--------------------------------------------- */
+
 app.get("/", (req, res) => {
   res.json({ message: "Login API is running." });
 });
+
+/* ---------------------------------------------
+   AUTH ROUTES
+--------------------------------------------- */
 
 app.post("/api/register", async (req, res) => {
   try {
@@ -92,28 +143,102 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.get("/api/profile", async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
+app.get("/api/profile", requireAuth, async (req, res) => {
+  res.json({
+    message: "Protected data.",
+    user: {
+      name: req.user.name,
+      email: req.user.email
+    }
+  });
+});
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Unauthorized." });
+/* ---------------------------------------------
+   ORDER CRUD ROUTES  (all protected)
+--------------------------------------------- */
+
+// CREATE — new order
+app.post("/api/orders", requireAuth, async (req, res) => {
+  try {
+    const { customerName, item, size, quantity, notes, price } = req.body;
+
+    if (!customerName || !item || price === undefined) {
+      return res.status(400).json({ message: "Customer name, item, and price are required." });
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    res.json({
-      message: "Protected data.",
-      user: {
-        name: decoded.name,
-        email: decoded.email
-      }
+    const order = await Order.create({
+      customerName,
+      item,
+      size,
+      quantity,
+      notes,
+      price,
+      createdBy: req.user.userId
     });
+
+    res.status(201).json({ message: "Order created.", order });
   } catch (error) {
-    res.status(401).json({ message: "Invalid or expired token." });
+    res.status(500).json({ message: "Server error." });
   }
 });
+
+// READ — list all orders (optional ?status= filter)
+app.get("/api/orders", requireAuth, async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
+    res.json({ orders });
+  } catch (error) {
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
+// READ — single order
+app.get("/api/orders/:id", requireAuth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    res.json({ order });
+  } catch (error) {
+    res.status(400).json({ message: "Invalid order id." });
+  }
+});
+
+// UPDATE — edit order details or status
+app.put("/api/orders/:id", requireAuth, async (req, res) => {
+  try {
+    const { customerName, item, size, quantity, notes, price, status } = req.body;
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { customerName, item, size, quantity, notes, price, status },
+      { new: true, runValidators: true, omitUndefined: true }
+    );
+
+    if (!order) return res.status(404).json({ message: "Order not found." });
+
+    res.json({ message: "Order updated.", order });
+  } catch (error) {
+    res.status(400).json({ message: "Could not update order." });
+  }
+});
+
+// DELETE — remove order
+app.delete("/api/orders/:id", requireAuth, async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    res.json({ message: "Order deleted." });
+  } catch (error) {
+    res.status(400).json({ message: "Invalid order id." });
+  }
+});
+
+/* ---------------------------------------------
+   START SERVER
+--------------------------------------------- */
 
 const PORT = process.env.PORT || 5000;
 

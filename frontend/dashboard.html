@@ -1,48 +1,540 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders · Cafe Beato</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --espresso: #2B1B12;
+    --cream: #FAF3E8;
+    --paper: #FFFDF9;
+    --caramel: #B5651D;
+    --caramel-dark: #8F4E15;
+    --sage: #6E7F5C;
+    --rust: #9B4A3A;
+    --line: #E4D8C4;
+    --muted: #7A6B58;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--espresso);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 28px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  header .sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  header nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    padding: 8px 14px;
+    border-radius: 6px;
+  }
+  header nav a:hover { border-color: var(--caramel); color: var(--caramel-dark); }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  @media (max-width: 780px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* --- Ticket pad (create/edit form) --- */
+  .ticket-pad {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 22px 22px 18px;
+    position: relative;
+  }
+  .ticket-pad::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, var(--caramel) 0 10px, transparent 10px 18px);
+    border-radius: 3px 3px 0 0;
+  }
+
+  .ticket-pad h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 6px 0 16px;
+  }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--cream);
+    color: var(--espresso);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: 2px solid var(--caramel);
+    outline-offset: 1px;
+    background: var(--paper);
+  }
+  .field textarea { resize: vertical; min-height: 50px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .ticket-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+
+  .btn-primary { background: var(--caramel); color: var(--paper); flex: 1; }
+  .btn-primary:hover { background: var(--caramel-dark); }
+  .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--rust); color: var(--rust); }
+
+  #formError {
+    color: var(--rust);
+    font-size: 13px;
+    margin-top: 10px;
+    min-height: 16px;
+  }
+
+  /* --- Order rail --- */
+  .rail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .rail-head h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .filters { display: flex; gap: 6px; }
+  .filters button {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .filters button.active {
+    background: var(--espresso);
+    color: var(--cream);
+    border-color: var(--espresso);
+  }
+
+  .ticket-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .ticket {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+
+  .ticket-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .ticket-item {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin: 3px 0 2px;
+  }
+
+  .ticket-meta { font-size: 13px; color: var(--muted); }
+  .ticket-notes { font-size: 13px; color: var(--muted); font-style: italic; margin-top: 4px; }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: lowercase;
+  }
+  .status-pending { background: #F4E3CE; color: #8F4E15; }
+  .status-preparing { background: #E9E1D6; color: var(--muted); }
+  .status-ready { background: #E4EADA; color: var(--sage); }
+  .status-completed { background: #EFEFEF; color: #8A8A8A; }
+
+  .ticket-actions-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .ticket-actions-row select {
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    padding: 5px 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--cream);
+  }
+
+  .icon-row { display: flex; gap: 6px; }
+  .icon-btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 5px 9px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .icon-btn:hover { border-color: var(--caramel); color: var(--caramel-dark); }
+  .icon-btn.danger:hover { border-color: var(--rust); color: var(--rust); }
+
+  .price-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--espresso);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+    font-size: 14px;
+  }
+</style>
 </head>
 <body>
-  <main class="card">
-    <h1>Dashboard</h1>
-    <p id="welcome">Loading...</p>
-    <button id="logout">Logout</button>
-  </main>
 
-  <script>
-    const API_URL = "https://cafe-beato-system-1.onrender.com";
-    const token = localStorage.getItem("token");
+<header>
+  <div>
+    <h1>Cafe Beato — Order Rail</h1>
+    <div class="sub" id="welcome">Loading…</div>
+  </div>
+  <nav>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="#" id="logout">Logout</a>
+  </nav>
+</header>
 
-    if (!token) {
-      window.location.href = "index.html";
+<main>
+  <section class="ticket-pad">
+    <h2 id="formTitle">Write a ticket</h2>
+    <form id="orderForm">
+      <div class="field">
+        <label for="customerName">Customer</label>
+        <input type="text" id="customerName" required>
+      </div>
+      <div class="field">
+        <label for="item">Item</label>
+        <input type="text" id="item" placeholder="Cortado, Croissant…" required>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="size">Size</label>
+          <select id="size">
+            <option>Small</option>
+            <option selected>Medium</option>
+            <option>Large</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="quantity">Qty</label>
+          <input type="number" id="quantity" min="1" value="1" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="price">Price (₱)</label>
+        <input type="number" id="price" min="0" step="0.01" required>
+      </div>
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" placeholder="Oat milk, extra shot…"></textarea>
+      </div>
+      <div class="ticket-actions">
+        <button type="submit" class="btn-primary" id="submitBtn">Send ticket</button>
+        <button type="button" class="btn-ghost" id="cancelEdit" style="display:none;">Cancel</button>
+      </div>
+      <div id="formError"></div>
+    </form>
+  </section>
+
+  <section>
+    <div class="rail-head">
+      <h2>On the rail</h2>
+      <div class="filters" id="filters">
+        <button data-status="" class="active">All</button>
+        <button data-status="pending">Pending</button>
+        <button data-status="preparing">Preparing</button>
+        <button data-status="ready">Ready</button>
+        <button data-status="completed">Completed</button>
+      </div>
+    </div>
+    <div class="ticket-list" id="ticketList">
+      <div class="empty-state">Loading orders…</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const API_URL = "https://cafe-beato-system-1.onrender.com"; // same backend as your login system
+const token = localStorage.getItem("token");
+
+if (!token) {
+  window.location.href = "index.html";
+}
+
+const authHeaders = {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${token}`
+};
+
+let editingId = null;
+let activeFilter = "";
+
+/* ---- Profile / welcome ---- */
+fetch(`${API_URL}/api/profile`, { headers: authHeaders })
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(data => {
+    document.getElementById("welcome").textContent = `Signed in as ${data.user.name}`;
+  })
+  .catch(() => {
+    localStorage.removeItem("token");
+    window.location.href = "index.html";
+  });
+
+document.getElementById("logout").addEventListener("click", (e) => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  window.location.href = "index.html";
+});
+
+/* ---- Filters ---- */
+document.getElementById("filters").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  document.querySelectorAll("#filters button").forEach(b => b.classList.remove("active"));
+  e.target.classList.add("active");
+  activeFilter = e.target.dataset.status;
+  loadOrders();
+});
+
+/* ---- Load + render orders ---- */
+async function loadOrders() {
+  const list = document.getElementById("ticketList");
+  list.innerHTML = `<div class="empty-state">Loading orders…</div>`;
+
+  try {
+    const url = activeFilter
+      ? `${API_URL}/api/orders?status=${activeFilter}`
+      : `${API_URL}/api/orders`;
+
+    const res = await fetch(url, { headers: authHeaders });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.message || "Could not load orders.");
+
+    if (data.orders.length === 0) {
+      list.innerHTML = `<div class="empty-state">No orders here yet. Write a ticket to start the rail.</div>`;
+      return;
     }
 
-    fetch(`${API_URL}/api/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    .then(response => {
-      if (!response.ok) throw new Error();
-      return response.json();
-    })
-    .then(data => {
-      document.getElementById("welcome").textContent =
-        `Welcome, ${data.user.name} (${data.user.email})`;
-    })
-    .catch(() => {
-      localStorage.removeItem("token");
-      window.location.href = "index.html";
+    list.innerHTML = "";
+    data.orders.forEach(renderTicket);
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state">${err.message}</div>`;
+  }
+}
+
+function renderTicket(order) {
+  const list = document.getElementById("ticketList");
+  const ticket = document.createElement("div");
+  ticket.className = "ticket";
+
+  const shortId = order._id.slice(-6).toUpperCase();
+
+  ticket.innerHTML = `
+    <div>
+      <div class="ticket-num">#${shortId}</div>
+      <div class="ticket-item">${order.quantity} × ${order.size} ${escapeHtml(order.item)}</div>
+      <div class="ticket-meta">${escapeHtml(order.customerName)} · <span class="price-tag">₱${order.price.toFixed(2)}</span></div>
+      ${order.notes ? `<div class="ticket-notes">"${escapeHtml(order.notes)}"</div>` : ""}
+      <span class="status-pill status-${order.status}">${order.status}</span>
+    </div>
+    <div class="ticket-actions-row">
+      <select data-id="${order._id}" class="status-select">
+        <option value="pending" ${order.status === "pending" ? "selected" : ""}>Pending</option>
+        <option value="preparing" ${order.status === "preparing" ? "selected" : ""}>Preparing</option>
+        <option value="ready" ${order.status === "ready" ? "selected" : ""}>Ready</option>
+        <option value="completed" ${order.status === "completed" ? "selected" : ""}>Completed</option>
+      </select>
+      <div class="icon-row">
+        <button class="icon-btn edit-btn" data-id="${order._id}">Edit</button>
+        <button class="icon-btn danger delete-btn" data-id="${order._id}">Void</button>
+      </div>
+    </div>
+  `;
+
+  list.appendChild(ticket);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ---- Create / Update (submit) ---- */
+document.getElementById("orderForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById("formError");
+  errorEl.textContent = "";
+
+  const payload = {
+    customerName: document.getElementById("customerName").value.trim(),
+    item: document.getElementById("item").value.trim(),
+    size: document.getElementById("size").value,
+    quantity: Number(document.getElementById("quantity").value),
+    price: Number(document.getElementById("price").value),
+    notes: document.getElementById("notes").value.trim()
+  };
+
+  try {
+    const url = editingId ? `${API_URL}/api/orders/${editingId}` : `${API_URL}/api/orders`;
+    const method = editingId ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: authHeaders,
+      body: JSON.stringify(payload)
     });
 
-    document.getElementById("logout").addEventListener("click", () => {
-      localStorage.removeItem("token");
-      window.location.href = "index.html";
-    });
-  </script>
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Could not save order.");
+
+    resetForm();
+    loadOrders();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+});
+
+/* ---- Edit / Delete / Status change (event delegation) ---- */
+document.getElementById("ticketList").addEventListener("click", async (e) => {
+  const id = e.target.dataset.id;
+  if (!id) return;
+
+  if (e.target.classList.contains("delete-btn")) {
+    if (!confirm("Void this order?")) return;
+    await fetch(`${API_URL}/api/orders/${id}`, { method: "DELETE", headers: authHeaders });
+    loadOrders();
+  }
+
+  if (e.target.classList.contains("edit-btn")) {
+    const res = await fetch(`${API_URL}/api/orders/${id}`, { headers: authHeaders });
+    const data = await res.json();
+    if (!res.ok) return;
+    fillFormForEdit(data.order);
+  }
+});
+
+document.getElementById("ticketList").addEventListener("change", async (e) => {
+  if (!e.target.classList.contains("status-select")) return;
+  const id = e.target.dataset.id;
+  const status = e.target.value;
+
+  await fetch(`${API_URL}/api/orders/${id}`, {
+    method: "PUT",
+    headers: authHeaders,
+    body: JSON.stringify({ status })
+  });
+  loadOrders();
+});
+
+function fillFormForEdit(order) {
+  editingId = order._id;
+  document.getElementById("formTitle").textContent = `Editing #${order._id.slice(-6).toUpperCase()}`;
+  document.getElementById("customerName").value = order.customerName;
+  document.getElementById("item").value = order.item;
+  document.getElementById("size").value = order.size;
+  document.getElementById("quantity").value = order.quantity;
+  document.getElementById("price").value = order.price;
+  document.getElementById("notes").value = order.notes || "";
+  document.getElementById("submitBtn").textContent = "Update ticket";
+  document.getElementById("cancelEdit").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("cancelEdit").addEventListener("click", resetForm);
+
+function resetForm() {
+  editingId = null;
+  document.getElementById("orderForm").reset();
+  document.getElementById("quantity").value = 1;
+  document.getElementById("size").value = "Medium";
+  document.getElementById("formTitle").textContent = "Write a ticket";
+  document.getElementById("submitBtn").textContent = "Send ticket";
+  document.getElementById("cancelEdit").style.display = "none";
+}
+
+loadOrders();
+</script>
 </body>
 </html>
